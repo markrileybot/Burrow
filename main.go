@@ -32,14 +32,15 @@ type StormCluster struct {
 }
 
 type ApplicationContext struct {
-	Config       *BurrowConfig
-	Storage      *OffsetStorage
-	Clusters     map[string]*KafkaCluster
-	Storms       map[string]*StormCluster
-	Server       *HttpServer
-	Emailer      *Emailer
-	HttpNotifier *HttpNotifier
-	NotifierLock *zk.Lock
+	Config        *BurrowConfig
+	Storage       *OffsetStorage
+	Clusters      map[string]*KafkaCluster
+	Storms        map[string]*StormCluster
+	Server        *HttpServer
+	Emailer       *Emailer
+	HttpNotifier  *HttpNotifier
+	SlackNotifier *SlackNotifier
+	NotifierLock  *zk.Lock
 }
 
 func loadNotifiers(app *ApplicationContext) error {
@@ -65,6 +66,16 @@ func loadNotifiers(app *ApplicationContext) error {
 		app.HttpNotifier = httpnotifier
 	}
 
+	if app.Config.Slacknotifier.Url != "" {
+		log.Info("Configuring Slack notifier")
+		slacknotifier, err := NewSlackNotifier(app)
+		if err != nil {
+			log.Criticalf("Cannot configure HTTP notifier: %v", err)
+			return err
+		}
+		app.SlackNotifier = slacknotifier
+	}
+
 	return nil
 }
 
@@ -85,6 +96,10 @@ func startNotifiers(app *ApplicationContext) {
 		log.Info("Starting HTTP notifier")
 		app.HttpNotifier.Start()
 	}
+	if app.SlackNotifier != nil {
+		log.Info("Strarting Slack notifier")
+		app.SlackNotifier.Start()
+	}
 }
 
 func stopNotifiers(app *ApplicationContext) {
@@ -98,6 +113,10 @@ func stopNotifiers(app *ApplicationContext) {
 	if app.HttpNotifier != nil {
 		log.Info("Stopping HTTP notifier")
 		app.HttpNotifier.Stop()
+	}
+	if app.SlackNotifier != nil {
+		log.Info("Stopping Slack notifier")
+		app.SlackNotifier.Stop()
 	}
 }
 

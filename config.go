@@ -93,6 +93,15 @@ type BurrowConfig struct {
 		Timeout        int      `gcfg:"timeout"`
 		Keepalive      int      `gcfg:"keepalive"`
 	}
+	Slacknotifier struct {
+		Url           string `gcfg:"url"`
+		Interval      int64  `gcfg:"interval"`
+		Channel       string `gcfg:"channel"`
+		Username      string `gcfg:"username"`
+		PostThreshold int    `gcfg:"post-threshold"`
+		Timeout       int    `gcfg:"timeout"`
+		Keepalive     int    `gcfg:"keepalive"`
+	}
 }
 
 func ReadConfig(cfgFile string) *BurrowConfig {
@@ -376,6 +385,21 @@ func ValidateConfig(app *ApplicationContext) error {
 				errs = append(errs, "One or more HTTP notifier extra fields are invalid")
 				break
 			}
+		}
+	}
+
+	if app.Config.Slacknotifier.Url != "" {
+		if !validateUrl(app.Config.Slacknotifier.Url) {
+			errs = append(errs, "Slack notifier URL is invalid")
+		}
+		if app.Config.Slacknotifier.Channel == "" {
+			app.Config.Slacknotifier.Channel = "#general"
+		}
+		if app.Config.Slacknotifier.Username == "" {
+			app.Config.Slacknotifier.Username = "Burrower"
+		}
+		if app.Config.Slacknotifier.Interval == 0 {
+			app.Config.Slacknotifier.Interval = 60
 		}
 	}
 
