@@ -102,11 +102,12 @@ func (slack *SlackNotifier) handleEvaluationResponse(result *ConsumerGroupStatus
 		emoji = ":x:"
 		color = "danger"
 	}
-	title := "Burrow monitoring report"
-	pretext := fmt.Sprintf("%s Group `%s` in Cluster `%s` is *%s*", emoji, result.Group, result.Cluster, result.Status.String())
 
-	detailedBody := ""
-	detailedBody += fmt.Sprintf("*Detail:* Total Partition = `%d` Fail Partition = `%d`\n",
+	title := "Burrow monitoring report"
+	fallback := fmt.Sprintf("%s is %s", result.Group, result.Status)
+	pretext := fmt.Sprintf("%s Group `%s` in Cluster `%s` is *%s*", emoji, result.Group, result.Cluster, result.Status)
+
+	detailedBody := fmt.Sprintf("*Detail:* Total Partition = `%d` Fail Partition = `%d`\n",
 		result.TotalPartitions, len(result.Partitions))
 
 	for _, p := range result.Partitions {
@@ -117,6 +118,7 @@ func (slack *SlackNotifier) handleEvaluationResponse(result *ConsumerGroupStatus
 	a := attachment{
 		Color:    color,
 		Title:    title,
+		Fallback: fallback,
 		Pretext:  pretext,
 		Text:     detailedBody,
 		MrkdwnIn: []string{"text", "pretext"},
