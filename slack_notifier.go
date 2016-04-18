@@ -103,7 +103,7 @@ func (slack *SlackNotifier) handleEvaluationResponse(result *ConsumerGroupStatus
 		color = "danger"
 	}
 	title := "Burrow monitoring report"
-	pretext := fmt.Sprintf("%s Group %s in Cluster %s is *%s*", emoji, result.Group, result.Cluster, result.Status.String())
+	pretext := fmt.Sprintf("%s Group `%s` in Cluster `%s` is *%s*", emoji, result.Group, result.Cluster, result.Status.String())
 
 	detailedBody := ""
 	detailedBody += fmt.Sprintf("*Detail:* Total Partition = `%d` Fail Partition = `%d`\n",
@@ -237,8 +237,11 @@ func (slack *SlackNotifier) postToSlack() bool {
 	log.Infof("struct = %+v, json = %s", slack.slackMessage, string(data))
 
 	b := bytes.NewBuffer(data)
-	if res, err := http.Post(slack.app.Config.Slacknotifier.Url, "application/json", b); err != nil {
-		log.Errorf("Unable to send data to slack:", err)
+	req, err := http.NewRequest("POST", slack.app.Config.Slacknotifier.Url, b)
+	req.Header.Set("Content-Type", "application/json")
+
+	if res, err := slack.httpClient.Do(req); err != nil {
+		log.Errorf("Unable to send data to slack:%+v", err)
 		return false
 	} else {
 		defer res.Body.Close()
