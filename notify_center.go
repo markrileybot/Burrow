@@ -54,6 +54,12 @@ func LoadNotifiers(app *ApplicationContext) error {
 		}
 	}
 
+	if app.Config.Lognotifier.Template != "" {
+		if logNotifier, err := NewLogNotifier(app); err == nil {
+			notifiers = append(notifiers, logNotifier)
+		}
+	}
+
 	nc := &NotifyCenter{
 		app:            app,
 		notifiers:      notifiers,
@@ -256,5 +262,15 @@ func NewSlackNotifier(app *ApplicationContext) (*notifier.SlackNotifier, error) 
 				Proxy: http.ProxyFromEnvironment,
 			},
 		},
+	}, nil
+}
+
+func NewLogNotifier(app *ApplicationContext) (*notifier.LogNotifier, error) {
+	log.Info("Start Log Notify")
+
+	return &notifier.LogNotifier{
+		Groups:       app.Config.Lognotifier.Groups,
+		Threshold:    app.Config.Lognotifier.Threshold,
+		TemplateFile: app.Config.Lognotifier.Template,
 	}, nil
 }

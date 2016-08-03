@@ -141,7 +141,6 @@ func burrowMain() int {
 	}
 
 	// Notifiers are started in a goroutine if we get the ZK lock
-	log.Info("Start notifiers")
 	go StartNotifiers(appContext)
 	defer StopNotifiers(appContext)
 

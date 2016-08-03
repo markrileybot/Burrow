@@ -92,6 +92,12 @@ type BurrowConfig struct {
 		Interval  int64    `gcfg:"interval"`
 		Threshold int      `gcfg:"threshold"`
 	}
+	Lognotifier struct {
+		Groups    []string `gcfg:"group"`
+		Interval  int64    `gcfg:"interval"`
+		Threshold int      `gcfg:"threshold"`
+		Template  string   `gcfg:"template"`
+	}
 	Httpnotifier struct {
 		Groups         []string `gcfg:"group"`
 		Url            string   `gcfg:"url"`
@@ -439,15 +445,20 @@ func ValidateConfig(app *ApplicationContext) error {
 		}
 		if app.Config.Slacknotifier.Interval == 0 {
 			app.Config.Slacknotifier.Interval = 60
-			if app.Config.Slacknotifier.IconUrl == "" {
-				app.Config.Slacknotifier.IconUrl = "https://slack.com/img/icons/app-57.png"
-			}
-			if app.Config.Slacknotifier.IconEmoji == "" {
-				app.Config.Slacknotifier.IconEmoji = ":ghost:"
-			}
+		}
+		if app.Config.Slacknotifier.IconUrl == "" {
+			app.Config.Slacknotifier.IconUrl = "https://slack.com/img/icons/app-57.png"
+		}
+		if app.Config.Slacknotifier.IconEmoji == "" {
+			app.Config.Slacknotifier.IconEmoji = ":ghost:"
 		}
 	}
 
+	if app.Config.Lognotifier.Template != "" {
+		if app.Config.Lognotifier.Interval == 0 {
+			app.Config.Lognotifier.Interval = 60
+		}
+	}
 
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, ". ") + ".")
