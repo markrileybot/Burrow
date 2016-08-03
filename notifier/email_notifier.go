@@ -62,13 +62,18 @@ func (emailer *EmailNotifier) Notify(msg Message) error {
 		emailer.groupMsgs = make(map[string]Message)
 	}
 
-	for _, group := range emailer.Groups {
+	if len(emailer.Groups) == 0 {
 		clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
-		if clusterGroup == group {
-			emailer.groupMsgs[clusterGroup] = msg
+		emailer.groupMsgs[clusterGroup] = msg
+	} else {
+		for _, group := range emailer.Groups {
+			clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
+			if clusterGroup == group {
+				emailer.groupMsgs[clusterGroup] = msg
+			}
 		}
 	}
-	if len(emailer.Groups) == len(emailer.groupMsgs) {
+	if len(emailer.groupMsgs) > 0 {
 		return emailer.sendConsumerGroupStatusNotify()
 	}
 	return nil

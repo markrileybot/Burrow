@@ -12,8 +12,8 @@ package main
 
 import (
 	log "github.com/cihub/seelog"
-	"github.com/linkedin/Burrow/notifier"
-	"github.com/linkedin/Burrow/protocol"
+	"./notifier"
+	"./protocol"
 	"math/rand"
 	"net"
 	"net/http"
@@ -48,7 +48,7 @@ func LoadNotifiers(app *ApplicationContext) error {
 			}
 		}
 	}
-	if app.Config.Slacknotifier.Enable {
+	if app.Config.Slacknotifier.Url != "" {
 		if slackNotifier, err := NewSlackNotifier(app); err == nil {
 			notifiers = append(notifiers, slackNotifier)
 		}
@@ -138,8 +138,8 @@ func (nc *NotifyCenter) refreshConsumerGroups() {
 
 		// Check for new groups, mark existing groups true
 		for _, consumerGroup := range consumerGroups {
-			// Don't bother adding groups in the blacklist
-			if (nc.app.Storage.groupBlacklist != nil) && nc.app.Storage.groupBlacklist.MatchString(consumerGroup) {
+			// Don't bother adding groups in the blacklist/whitelist
+			if (!nc.app.Storage.acceptConsumerGroup(consumerGroup)) {
 				continue
 			}
 
@@ -188,22 +188,20 @@ func NewEmailNotifier(app *ApplicationContext) ([]*notifier.EmailNotifier, error
 	log.Info("Start email notify")
 	emailers := []*notifier.EmailNotifier{}
 	for to, cfg := range app.Config.Emailnotifier {
-		if cfg.Enable {
-			emailer := &notifier.EmailNotifier{
-				Threshold:    cfg.Threshold,
-				TemplateFile: app.Config.Smtp.Template,
-				Server:       app.Config.Smtp.Server,
-				Port:         app.Config.Smtp.Port,
-				Username:     app.Config.Smtp.Username,
-				Password:     app.Config.Smtp.Password,
-				AuthType:     app.Config.Smtp.AuthType,
-				Interval:     cfg.Interval,
-				From:         app.Config.Smtp.From,
-				To:           to,
-				Groups:       cfg.Groups,
-			}
-			emailers = append(emailers, emailer)
+		emailer := &notifier.EmailNotifier{
+			Threshold:    cfg.Threshold,
+			TemplateFile: app.Config.Smtp.Template,
+			Server:       app.Config.Smtp.Server,
+			Port:         app.Config.Smtp.Port,
+			Username:     app.Config.Smtp.Username,
+			Password:     app.Config.Smtp.Password,
+			AuthType:     app.Config.Smtp.AuthType,
+			Interval:     cfg.Interval,
+			From:         app.Config.Smtp.From,
+			To:           to,
+			Groups:       cfg.Groups,
 		}
+		emailers = append(emailers, emailer)
 	}
 
 	return emailers, nil

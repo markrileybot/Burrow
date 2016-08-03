@@ -12,7 +12,7 @@ package main
 
 import (
 	log "github.com/cihub/seelog"
-	"github.com/linkedin/Burrow/protocol"
+	"./protocol"
 	"github.com/samuel/go-zookeeper/zk"
 	"math/rand"
 	"strconv"

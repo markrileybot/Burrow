@@ -88,13 +88,11 @@ type BurrowConfig struct {
 		Template string `gcfg:"template"`
 	}
 	Emailnotifier map[string]*struct {
-		Enable    bool     `gcfg:"enable"`
 		Groups    []string `gcfg:"group"`
 		Interval  int64    `gcfg:"interval"`
 		Threshold int      `gcfg:"threshold"`
 	}
 	Httpnotifier struct {
-		Enable         bool     `gcfg:"enable"`
 		Groups         []string `gcfg:"group"`
 		Url            string   `gcfg:"url"`
 		Interval       int64    `gcfg:"interval"`
@@ -107,9 +105,8 @@ type BurrowConfig struct {
 		Keepalive      int      `gcfg:"keepalive"`
 	}
 	Slacknotifier struct {
-		Enable    bool     `gcfg:"enable"`
-		Groups    []string `gcfg:"group"`
-		Url       string   `gcfg:"url"`
+	        Groups    []string `gcfg:"group"`
+	        Url       string   `gcfg:"url"`
 		Interval  int64    `gcfg:"interval"`
 		Channel   string   `gcfg:"channel"`
 		Username  string   `gcfg:"username"`
@@ -120,15 +117,6 @@ type BurrowConfig struct {
 		Keepalive int      `gcfg:"keepalive"`
 	}
 	Clientprofile map[string]*ClientProfile
-	Slacknotifier struct {
-		Url           string `gcfg:"url"`
-		Interval      int64  `gcfg:"interval"`
-		Channel       string `gcfg:"channel"`
-		Username      string `gcfg:"username"`
-		PostThreshold int    `gcfg:"post-threshold"`
-		Timeout       int    `gcfg:"timeout"`
-		Keepalive     int    `gcfg:"keepalive"`
-	}
 }
 
 func ReadConfig(cfgFile string) *BurrowConfig {
@@ -376,9 +364,7 @@ func ValidateConfig(app *ApplicationContext) error {
 			if !validateEmail(email) {
 				errs = append(errs, "Email address is invalid")
 			}
-			if len(cfg.Groups) == 0 {
-				errs = append(errs, "Email notification configured with no groups")
-			} else {
+			if len(cfg.Groups) > 0 {
 				for _, group := range cfg.Groups {
 					groupParts := strings.Split(group, ",")
 					if len(groupParts) != 2 {
@@ -453,13 +439,15 @@ func ValidateConfig(app *ApplicationContext) error {
 		}
 		if app.Config.Slacknotifier.Interval == 0 {
 			app.Config.Slacknotifier.Interval = 60
-		if app.Config.Slacknotifier.IconUrl == "" {
-			app.Config.Slacknotifier.IconUrl = "https://slack.com/img/icons/app-57.png"
-		}
-		if app.Config.Slacknotifier.IconEmoji == "" {
-			app.Config.Slacknotifier.IconEmoji = ":ghost:"
+			if app.Config.Slacknotifier.IconUrl == "" {
+				app.Config.Slacknotifier.IconUrl = "https://slack.com/img/icons/app-57.png"
+			}
+			if app.Config.Slacknotifier.IconEmoji == "" {
+				app.Config.Slacknotifier.IconEmoji = ":ghost:"
+			}
 		}
 	}
+
 
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, ". ") + ".")
@@ -504,7 +492,7 @@ func validateZookeeperPath(path string) bool {
 }
 
 func validateTopic(topic string) bool {
-	matches, _ := regexp.MatchString(`^[a-zA-Z0-9_\-]+$`, topic)
+	matches, _ := regexp.MatchString(`^[a-zA-Z0-9_\.-]+$`, topic)
 	return matches
 }
 
