@@ -29,9 +29,10 @@ type NotifyCenter struct {
 	notifiers      []notifier.Notifier
 	refreshTicker  *time.Ticker
 	quitChan       chan struct{}
-	groupList      map[string]map[string]bool
+	groupList      map[string]map[string]int
 	groupLock      sync.RWMutex
 	resultsChannel chan *protocol.ConsumerGroupStatus
+	groupStatus    map[string]map[string]protocol.StatusConstant
 }
 
 func LoadNotifiers(app *ApplicationContext) error {
@@ -65,9 +66,10 @@ func LoadNotifiers(app *ApplicationContext) error {
 		notifiers:      notifiers,
 		interval:       app.Config.Notify.Interval,
 		quitChan:       make(chan struct{}),
-		groupList:      make(map[string]map[string]bool),
+		groupList:      make(map[string]map[string]int),
 		groupLock:      sync.RWMutex{},
 		resultsChannel: make(chan *protocol.ConsumerGroupStatus),
+		groupStatus:    make(map[string]map[string]protocol.StatusConstant),
 	}
 
 	app.NotifyCenter = nc
@@ -98,7 +100,7 @@ OUTERLOOP:
 		case <-nc.refreshTicker.C:
 			nc.refreshConsumerGroups()
 		case result := <-nc.resultsChannel:
-			go nc.handleEvaluationResponse(result)
+			nc.handleEvaluationResponse(result)
 		}
 	}
 }
@@ -110,7 +112,7 @@ func StopNotifiers(app *ApplicationContext) {
 	if nc.refreshTicker != nil {
 		nc.refreshTicker.Stop()
 		nc.groupLock.Lock()
-		nc.groupList = make(map[string]map[string]bool)
+		nc.groupList = make(map[string]map[string]int)
 		nc.groupLock.Unlock()
 	}
 	close(nc.quitChan)
@@ -118,7 +120,29 @@ func StopNotifiers(app *ApplicationContext) {
 }
 
 func (nc *NotifyCenter) handleEvaluationResponse(result *protocol.ConsumerGroupStatus) {
-	msg := notifier.Message(*result)
+	clusterStatuses, ok := nc.groupStatus[result.Cluster]
+	if !ok {
+		clusterStatuses = make(map[string]protocol.StatusConstant)
+		nc.groupStatus[result.Cluster] = make(map[string]protocol.StatusConstant)
+	}
+
+	statusChanged := false
+	groupStatus, ok := clusterStatuses[result.Group]
+	if !ok {
+		statusChanged = result.Status != protocol.StatusOK
+	} else {
+		statusChanged = result.Status != groupStatus
+	}
+	clusterStatuses[result.Group] = result.Status
+
+	if statusChanged {
+		msg := notifier.Message(*result)
+		log.Infof("%s/%s status changed from %s to %s", result.Cluster, result.Group, groupStatus, result.Status)
+		go nc.dispatchNotifications(msg)
+	}
+}
+
+func (nc *NotifyCenter) dispatchNotifications(msg notifier.Message) {
 	for _, notifier := range nc.notifiers {
 		if !notifier.Ignore(msg) {
 			notifier.Notify(msg)
@@ -127,13 +151,14 @@ func (nc *NotifyCenter) handleEvaluationResponse(result *protocol.ConsumerGroupS
 }
 
 func (nc *NotifyCenter) refreshConsumerGroups() {
+	log.Info("refreshConsumerGroups")
 	nc.groupLock.Lock()
 	defer nc.groupLock.Unlock()
 
 	for cluster, _ := range nc.app.Config.Kafka {
 		clusterGroups, ok := nc.groupList[cluster]
 		if !ok {
-			nc.groupList[cluster] = make(map[string]bool)
+			nc.groupList[cluster] = make(map[string]int)
 			clusterGroups = nc.groupList[cluster]
 		}
 
@@ -149,34 +174,46 @@ func (nc *NotifyCenter) refreshConsumerGroups() {
 				continue
 			}
 
-			if _, ok := clusterGroups[consumerGroup]; !ok {
+			var id int
+			if id, ok = clusterGroups[consumerGroup]; !ok {
 				// Add new consumer group and start checking it
+				id = rand.Int()
+				if id < 0 {
+					id = -id
+				} else if id == 0 {
+					id = 1
+				}
 				log.Infof("Start evaluating consumer group %s in cluster %s", consumerGroup, cluster)
-				go nc.startConsumerGroupEvaluator(consumerGroup, cluster)
+				go nc.startConsumerGroupEvaluator(consumerGroup, cluster, id)
 			}
-			clusterGroups[consumerGroup] = true
+			clusterGroups[consumerGroup] = id
 		}
 
 		// Delete groups that are false
 		for consumerGroup := range clusterGroups {
-			if !clusterGroups[consumerGroup] {
-				log.Debugf("Remove evaluator for consumer group %s in cluster %s", consumerGroup, cluster)
+			if clusterGroups[consumerGroup] == 0 {
+				log.Infof("Remove evaluator for consumer group %s in cluster %s", consumerGroup, cluster)
 				delete(clusterGroups, consumerGroup)
 			}
 		}
 	}
 }
 
-func (nc *NotifyCenter) startConsumerGroupEvaluator(group string, cluster string) {
+func (nc *NotifyCenter) startConsumerGroupEvaluator(group string, cluster string, id int) {
 	// Sleep for a random portion of the check interval
 	time.Sleep(time.Duration(rand.Int63n(nc.interval*1000)) * time.Millisecond)
 
 	for {
 		// Make sure this group still exists
 		nc.groupLock.RLock()
-		if _, ok := nc.groupList[cluster][group]; !ok {
+		if cid, ok := nc.groupList[cluster][group]; !ok {
 			nc.groupLock.RUnlock()
-			log.Debugf("Stopping evaluator for consumer group %s in cluster %s", group, cluster)
+			log.Infof("Stopping evaluator for consumer group %s in cluster %s", group, cluster)
+			break
+		} else if id != cid {
+			nc.groupLock.RUnlock()
+			log.Infof("Stopping evaluator for consumer group %s in cluster %s as a different on exists!",
+				group, cluster)
 			break
 		}
 		nc.groupLock.RUnlock()

@@ -67,7 +67,7 @@ func (logger *LogNotifier) Ignore(msg Message) bool {
 func (logger *LogNotifier) sendConsumerGroupStatusNotify() error {
 	var bytesToSend bytes.Buffer
 
-	msgs := make([]Message, len(logger.Groups))
+	msgs := make([]Message, len(logger.groupMsgs))
 	i := 0
 	for group, msg := range logger.groupMsgs {
 		msgs[i] = msg

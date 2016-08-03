@@ -45,12 +45,13 @@ type SlackMessage struct {
 }
 
 type attachment struct {
-	Color    string   `json:"color"`
-	Title    string   `json:"title"`
-	Pretext  string   `json:"pretext"`
-	Fallback string   `json:"fallback"`
-	Text     string   `json:"text"`
-	MrkdwnIn []string `json:"mrkdwn_in"`
+	Color     string   `json:"color"`
+	Title     string   `json:"title"`
+	Pretext   string   `json:"pretext"`
+	Fallback  string   `json:"fallback"`
+	Text      string   `json:"text"`
+	MrkdwnIn  []string `json:"mrkdwn_in"`
+	ImageUrl  string   `json:"image_url"`
 }
 
 func (slack *SlackNotifier) NotifierName() string {
@@ -66,34 +67,42 @@ func (slack *SlackNotifier) Notify(msg Message) error {
 		slack.groupMsgs = make(map[string]Message)
 	}
 
-	for _, group := range slack.Groups {
+	if len(slack.Groups) == 0 {
 		clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
-		if clusterGroup == group {
-			slack.groupMsgs[clusterGroup] = msg
+		slack.groupMsgs[clusterGroup] = msg
+	} else {
+		for _, group := range slack.Groups {
+			clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
+			if clusterGroup == group {
+				slack.groupMsgs[clusterGroup] = msg
+			}
 		}
 	}
-	if len(slack.Groups) == len(slack.groupMsgs) {
+	if len(slack.groupMsgs) > 0 {
 		return slack.sendConsumerGroupStatusNotify()
 	}
 	return nil
 }
 
 func (slack *SlackNotifier) sendConsumerGroupStatusNotify() error {
-	msgs := make([]attachment, len(slack.Groups))
+	msgs := make([]attachment, len(slack.groupMsgs))
 	i := 0
 	for _, msg := range slack.groupMsgs {
 
-		var emoji, color string
+		var emoji, color, imageUrl string
 		switch msg.Status {
 		case protocol.StatusOK:
 			emoji = ":white_check_mark:"
 			color = "good"
+			imageUrl = "https://media.giphy.com/media/Hg3LAJ9i9yCic/giphy.gif"
 		case protocol.StatusNotFound, protocol.StatusWarning:
 			emoji = ":question:"
 			color = "warning"
+			imageUrl = "https://media.giphy.com/media/IT6kBZ1k5oEeI/giphy.gif"
 		default:
 			emoji = ":x:"
 			color = "danger"
+			imageUrl = "https://media.giphy.com/media/123SNNIIuScdTW/giphy.gif"
 		}
 
 		title := "Burrow monitoring report"
@@ -115,6 +124,7 @@ func (slack *SlackNotifier) sendConsumerGroupStatusNotify() error {
 			Pretext:  pretext,
 			Text:     detailedBody,
 			MrkdwnIn: []string{"text", "pretext"},
+			ImageUrl: imageUrl,
 		}
 
 		i++
