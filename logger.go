@@ -14,8 +14,6 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"os"
-	"syscall"
-	"time"
 )
 
 type BurrowLogger struct {
@@ -38,22 +36,6 @@ func removePidFile(filename string) {
 	if err != nil {
 		fmt.Printf("Failed to remove PID file: %v\n", err)
 	}
-}
-
-func openOutLog(filename string) *os.File {
-	// Move existing out file to a dated file if it exists
-	if _, err := os.Stat(filename); err == nil {
-		if err = os.Rename(filename, filename+"."+time.Now().Format("2006-01-02_15:04:05")); err != nil {
-			log.Criticalf("Cannot move old out file: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	// Redirect stdout and stderr to out file
-	logFile, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
-	syscall.Dup2(int(logFile.Fd()), 1)
-	syscall.Dup2(int(logFile.Fd()), 2)
-	return logFile
 }
 
 func NewLogger(cfgfile string) *BurrowLogger {
