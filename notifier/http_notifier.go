@@ -13,7 +13,7 @@ package notifier
 import (
 	"bytes"
 	log "github.com/cihub/seelog"
-	"../protocol"
+	"github.com/linkedin/Burrow/protocol"
 	"github.com/pborman/uuid"
 	"io"
 	"io/ioutil"

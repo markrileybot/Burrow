@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	log "github.com/cihub/seelog"
-	"./protocol"
+	"github.com/linkedin/Burrow/protocol"
 	"github.com/samuel/go-zookeeper/zk"
 	"math/rand"
 	"regexp"

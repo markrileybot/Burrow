@@ -17,7 +17,7 @@ import (
 	"errors"
 	"github.com/Shopify/sarama"
 	log "github.com/cihub/seelog"
-	"./protocol"
+	"github.com/linkedin/Burrow/protocol"
 	"sync"
 	"time"
 )
