@@ -118,18 +118,17 @@ func (twilio *TwilioNotifier) sendConsumerGroupStatusNotify() error {
 				return err
 			} else {
 				statusCode := rep.StatusCode
-				var ret string
+				ret := ""
 				if statusCode >= 400 {
 					body, _ := ioutil.ReadAll(rep.Body)
 					log.Errorf("Unable to notify twilio (status=%d): %s", statusCode, string(body))
 					ret = "Send to twilio failed"
 				} else {
 					log.Debug("Twilio notification sent")
-					ret = nil
 				}
 				rep.Body.Close()
 
-				if ret != nil {
+				if ret != "" {
 					return errors.New(ret)
 				}
 			}
