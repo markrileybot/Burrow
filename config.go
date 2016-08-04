@@ -122,6 +122,19 @@ type BurrowConfig struct {
 		Timeout   int      `gcfg:"timeout"`
 		Keepalive int      `gcfg:"keepalive"`
 	}
+	Twilionotifier struct {
+	      	Groups    []string `gcfg:"group"`
+	      	Url       string   `gcfg:"url"`
+	      	Interval  int64    `gcfg:"interval"`
+	      	Sid   	  string   `gcfg:"sid"`
+	      	Token     string   `gcfg:"token"`
+	      	To        []string `gcfg:"to"`
+	      	From      string   `gfcg:"from"`
+		Threshold int      `gcfg:"threshold"`
+	      	Timeout   int      `gcfg:"timeout"`
+		Keepalive int      `gcfg:"keepalive"`
+		Template  string   `gcfg:"template"`
+	}
 	Clientprofile map[string]*ClientProfile
 }
 
@@ -454,7 +467,33 @@ func ValidateConfig(app *ApplicationContext) error {
 		}
 	}
 
+	// Twilio Notifier config
+	if app.Config.Twilionotifier.Url != "" {
+		if !validateUrl(app.Config.Twilionotifier.Url) {
+			errs = append(errs, "Twilio notifier URL is invalid")
+		}
+		if app.Config.Twilionotifier.Sid == "" {
+			errs = append(errs, "Twilio sid not defined")
+		}
+		if app.Config.Twilionotifier.Token == "" {
+			errs = append(errs, "Twilio token not defined")
+		}
+		if app.Config.Twilionotifier.Template == "" {
+			app.Config.Twilionotifier.Template = "config/default-twilio.tmpl"
+		}
+		if _, err := os.Stat(app.Config.Twilionotifier.Template); os.IsNotExist(err) {
+			errs = append(errs, "Twilio template file does not exist")
+		}
+		if app.Config.Twilionotifier.Interval == 0 {
+			app.Config.Twilionotifier.Interval = 60
+		}
+	}
+
+	// Log notifier
 	if app.Config.Lognotifier.Template != "" {
+		if _, err := os.Stat(app.Config.Lognotifier.Template); os.IsNotExist(err) {
+			errs = append(errs, "Log template file does not exist")
+		}
 		if app.Config.Lognotifier.Interval == 0 {
 			app.Config.Lognotifier.Interval = 60
 		}

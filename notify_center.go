@@ -61,6 +61,12 @@ func LoadNotifiers(app *ApplicationContext) error {
 		}
 	}
 
+	if app.Config.Twilionotifier.Url != "" {
+		if twilioNotifier, err := NewTwilioNotifier(app); err == nil {
+			notifiers = append(notifiers, twilioNotifier)
+		}
+	}
+
 	nc := &NotifyCenter{
 		app:            app,
 		notifiers:      notifiers,
@@ -295,6 +301,30 @@ func NewSlackNotifier(app *ApplicationContext) (*notifier.SlackNotifier, error) 
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
 					KeepAlive: time.Duration(app.Config.Slacknotifier.Keepalive) * time.Second,
+				}).Dial,
+				Proxy: http.ProxyFromEnvironment,
+			},
+		},
+	}, nil
+}
+
+func NewTwilioNotifier(app *ApplicationContext) (*notifier.TwilioNotifier, error) {
+	log.Info("Start Twilio Notify")
+
+	return &notifier.TwilioNotifier{
+		Url:          app.Config.Twilionotifier.Url,
+		Groups:       app.Config.Twilionotifier.Groups,
+		Threshold:    app.Config.Twilionotifier.Threshold,
+		Token:        app.Config.Twilionotifier.Token,
+		Sid:          app.Config.Twilionotifier.Sid,
+		To:           app.Config.Twilionotifier.To,
+		From:         app.Config.Twilionotifier.From,
+		TemplateFile: app.Config.Twilionotifier.Template,
+		HttpClient: &http.Client{
+			Timeout: time.Duration(app.Config.Twilionotifier.Timeout) * time.Second,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					KeepAlive: time.Duration(app.Config.Twilionotifier.Keepalive) * time.Second,
 				}).Dial,
 				Proxy: http.ProxyFromEnvironment,
 			},

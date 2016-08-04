@@ -19,11 +19,9 @@ import (
 	"../protocol"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 type SlackNotifier struct {
-	RefreshTicker *time.Ticker
 	Url           string
 	Channel       string
 	Username      string
